@@ -6,7 +6,7 @@ Browser Invokable AWS Lambdas
 
 - Navigate to [Cognito](https://console.aws.amazon.com/cognito/federated/?region=us-east-1) and get the Pool ID
 - Navigate to [Lambda](https://console.aws.amazon.com/lambda/home?region=us-east-1) and get the Lambda function name
-- Update JSFiddle with the PoolId and Lambda Function Name
+- Update JSFiddle with the Pool ID and Lambda Function Name
 - Profit!
 
 
