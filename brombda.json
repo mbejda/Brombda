@@ -1,0 +1,160 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Parameters": {
+        "lambdaName": {
+            "Type": "String",
+            "Default": "lambda1",
+            "Description": "Name of the Lambda function"
+        }
+    },
+    "Resources": {
+        "createLambda": {
+            "Type": "AWS::Lambda::Function",
+            "DependsOn": [
+                "LambdaRole"
+            ],
+            "Properties": {
+                "Handler": "index.handler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "LambdaRole",
+                        "Arn"
+                    ]
+                },
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Join": [
+                            "", [
+                                "exports.handler = (event, context, callback) => {",
+                                "   callback(null, 'Hello from Lambda');",
+                                "};"
+                            ]
+                        ]
+                    }
+                },
+                "Runtime": "nodejs4.3",
+                "Timeout": "25"
+            }
+        },
+        "CognitoPool": {
+            "Type": "AWS::Cognito::IdentityPool",
+            "Properties": {
+                "AllowUnauthenticatedIdentities": true,
+                "IdentityPoolName": {
+                    "Ref": "lambdaName"
+                }
+            }
+        },
+        "CognitoPoolAttachment": {
+            "Type": "AWS::Cognito::IdentityPoolRoleAttachment",
+            "DependsOn": [
+                "CognitoRole",
+                "CognitoPool"
+            ],
+            "Properties": {
+                "IdentityPoolId": {
+                    "Ref": "CognitoPool"
+                },
+                "Roles": {
+                    "unauthenticated": {
+                        "Fn::GetAtt": [
+                            "CognitoRole",
+                            "Arn"
+                        ]
+                    }
+                }
+            }
+        },
+        "LambdaRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "Policies": [{
+                    "PolicyName": {
+                        "Ref": "lambdaName"
+                    },
+                    "PolicyDocument": {
+                        "Version": "2012-10-17",
+                        "Statement": [{
+                                "Effect": "Allow",
+                                "Action": [
+                                    "logs:*"
+                                ],
+                                "Resource": "arn:aws:logs:*:*:*"
+                            },
+                            {
+                                "Effect": "Allow",
+                                "Action": [
+                                    "s3:GetObject",
+                                    "s3:PutObject"
+                                ],
+                                "Resource": "arn:aws:s3:::*"
+                            }
+                        ]
+                    }
+                }],
+
+
+                "AssumeRolePolicyDocument": {
+                    "Statement": [{
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": "lambda.amazonaws.com"
+                        },
+                        "Action": "sts:AssumeRole"
+
+                    }]
+                }
+            }
+        },
+        "CognitoRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "Policies": [{
+                    "PolicyName": {
+                        "Ref": "lambdaName"
+                    },
+                    "PolicyDocument": {
+                        "Statement": [{
+                                "Effect": "Allow",
+                                "Action": [
+                                    "mobileanalytics:PutEvents",
+                                    "cognito-sync:*"
+                                ],
+                                "Resource": [
+                                    "*"
+                                ]
+                            },
+                            {
+                                "Sid": "InvokePermission",
+                                "Effect": "Allow",
+                                "Action": [
+                                    "lambda:InvokeFunction"
+                                ],
+                                "Resource": "*"
+                            }
+                        ]
+                    }
+                }],
+                "AssumeRolePolicyDocument": {
+                    "Statement": [{
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Federated": "cognito-identity.amazonaws.com"
+                        },
+                        "Action": "sts:AssumeRoleWithWebIdentity",
+                        "Condition": {
+                            "StringEquals": {
+                                "cognito-identity.amazonaws.com:aud": {
+                                    "Ref": "CognitoPool"
+                                }
+                            },
+                            "ForAnyValue:StringLike": {
+                                "cognito-identity.amazonaws.com:amr": "unauthenticated"
+                            }
+                        }
+                    }]
+                }
+            }
+        }
+    }
+}
